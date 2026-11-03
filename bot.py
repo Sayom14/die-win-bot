@@ -58,7 +58,7 @@ print("🚀 DIE WIN V2 - ADVANCED TRADING ENGINE STARTED...")
 
 while True:
     try:
-        balance_data = exchange.fetch_balance()
+        balance_data = exchange.fetch_balance({'type': 'trade'})
         usdt_balance = balance_data['free'].get('USDT', 0.0)
 
         klines = exchange.fetch_ohlcv(SYMBOL, timeframe='1m', limit=15)
