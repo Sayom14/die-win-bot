@@ -21,9 +21,9 @@ threading.Thread(target=run_server).start()
 FIREBASE_URL = "https://die-win-trader-default-rtdb.firebaseio.com"
 
 # নিচে আপনার KuCoin API ডাটা বসান
-API_KEY = "6ae9a5480065990001dd650e"
-SECRET_KEY = "010d1379-f111-419a-8e84-89d53353f1bf"
-API_PASSPHRASE = "sayom@0099"
+API_KEY = "6ae9f4c10065990001dd66a7"
+SECRET_KEY = "bc471e6c-9b88-47cd-a983-aa801d08dc03"
+API_PASSPHRASE = "SaYom@0099"
 
 exchange = ccxt.kucoin({
     'apiKey': API_KEY,
@@ -59,7 +59,7 @@ print("🚀 DIE WIN V2 - ADVANCED TRADING ENGINE STARTED...")
 while True:
     try:
         balance_data = exchange.fetch_balance({'type': 'trade'})
-        usdt_balance = balance_data['total'].get('USDT', 0.0)
+        usdt_balance = balance_data['free'].get('USDT', 0.0)
 
         klines = exchange.fetch_ohlcv(SYMBOL, timeframe='1m', limit=15)
         closing_prices = [candle[4] for candle in klines]
