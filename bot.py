@@ -5,25 +5,24 @@ from flask import Flask
 import threading
 import os
 
-# --- Render-এ ফ্রিতে চালানোর জন্য ফেক সার্ভার ---
+# --- Render-er jonno Fake Server ---
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "DIE WIN BOT IS RUNNING 24/7!"
+    return "DIE WIN BOT IS RUNNING V2!"
 
 def run_server():
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
 threading.Thread(target=run_server).start()
-# -----------------------------------------------
+# -----------------------------------
 
-# Firebase URL
 FIREBASE_URL = "https://die-win-trader-default-rtdb.firebaseio.com"
 
-# আপনার KuCoin API ডেটা এখানে বসান (আগের মতোই)
+# Ekhane apnar KuCoin API data boshan
 API_KEY = "6ae9a5480065990001dd650e"
-SECRET_KEY = "6ae9a5480065990001dd650e"
+SECRET_KEY = "010d1379-f111-419a-8e84-89d53353f1bf"
 API_PASSPHRASE = "sayom@0099"
 
 exchange = ccxt.kucoin({
@@ -36,6 +35,7 @@ exchange = ccxt.kucoin({
 SYMBOL = 'BTC/USDT'
 in_position = False
 buy_amount_btc = 0
+active_trade_usdt = 0 # Koto dollar-er trade cholche tar hisab
 
 def calculate_rsi(prices, period=14):
     if len(prices) < period + 1: return 50
@@ -54,10 +54,14 @@ def calculate_rsi(prices, period=14):
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
-print("🚀 DIE WIN - KUCOIN REAL TRADING ENGINE STARTED...")
+print("🚀 DIE WIN V2 - ADVANCED TRADING ENGINE STARTED...")
 
 while True:
     try:
+        # Original Trading Balance check kora
+        balance_data = exchange.fetch_balance()
+        usdt_balance = balance_data['free'].get('USDT', 0.0)
+
         klines = exchange.fetch_ohlcv(SYMBOL, timeframe='1m', limit=15)
         closing_prices = [candle[4] for candle in klines]
         live_price = closing_prices[-1]
@@ -67,35 +71,34 @@ while True:
         command = app_req.get('command', 'STOP') if app_req else 'STOP'
         target_usdt = app_req.get('targetUsdt', 0) if app_req else 0
 
-        signal = "HOLD"
-
-        if command == "START" and target_usdt >= 1 and current_rsi < 30 and not in_position:
-            signal = "BUY"
-            buy_amount_btc = target_usdt / live_price
-            print(f"\n[!] RSI IS {current_rsi:.1f}! EXECUTING REAL BUY ORDER OF ${target_usdt}...")
-            
-            order = exchange.create_market_buy_order(SYMBOL, buy_amount_btc)
-            in_position = True
-            print(f"[+] BOUGHT {buy_amount_btc:.5f} BTC SUCCESSFULLY!\n")
+        # RSI 40 er kom asle Buy korbe (Updated)
+        if command == "START" and target_usdt >= 1 and current_rsi < 40 and not in_position:
+            if usdt_balance >= target_usdt:
+                buy_amount_btc = target_usdt / live_price
+                active_trade_usdt = target_usdt
+                print(f"\n[!] RSI IS {current_rsi:.1f} (< 40)! EXECUTING BUY OF ${target_usdt}...")
+                
+                exchange.create_market_buy_order(SYMBOL, buy_amount_btc)
+                in_position = True
+            else:
+                print(f"[X] Insufficient Balance! You need ${target_usdt} but have ${usdt_balance}")
 
         elif in_position and current_rsi > 70:
-            signal = "SELL"
-            print(f"\n[!] RSI IS {current_rsi:.1f}! EXECUTING REAL SELL ORDER TO SECURE PROFIT...")
-            
-            order = exchange.create_market_sell_order(SYMBOL, buy_amount_btc)
+            print(f"\n[!] RSI IS {current_rsi:.1f}! SELLING TO SECURE PROFIT...")
+            exchange.create_market_sell_order(SYMBOL, buy_amount_btc)
             in_position = False
+            active_trade_usdt = 0
             
             requests.patch(f"{FIREBASE_URL}/appData.json", json={"tradeCompleted": True, "command": "STOP"})
-            print("[+] SOLD SUCCESSFULLY! Profit secured. App Notified.\n")
 
+        # Firebase-e notun data pathano (Balance & Active Trade)
         bot_data = {
             "price": f"{live_price:,.2f}",
-            "rsi": f"{current_rsi:.1f}"
+            "rsi": f"{current_rsi:.1f}",
+            "balance": f"{usdt_balance:.2f}",
+            "active_trade": f"{active_trade_usdt:.2f}"
         }
         requests.put(f"{FIREBASE_URL}/botData.json", json=bot_data)
-        
-        status_msg = f"Holding BTC" if in_position else f"Target: ${target_usdt}" if command == "START" else "Standby"
-        print(f"Live >> Price: ${live_price:,.2f} | RSI: {current_rsi:.1f} | Status: {status_msg}")
 
     except Exception as e:
         print(f"System Error: {e}")
