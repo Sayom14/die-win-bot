@@ -5,7 +5,7 @@ from flask import Flask
 import threading
 import os
 
-# --- Render-er jonno Fake Server ---
+# --- Render-er jonno Server ---
 app = Flask(__name__)
 @app.route('/')
 def home():
@@ -20,7 +20,7 @@ threading.Thread(target=run_server).start()
 
 FIREBASE_URL = "https://die-win-trader-default-rtdb.firebaseio.com"
 
-# Ekhane apnar KuCoin API data boshan
+# নিচে আপনার KuCoin API ডাটা বসান
 API_KEY = "6ae9a5480065990001dd650e"
 SECRET_KEY = "010d1379-f111-419a-8e84-89d53353f1bf"
 API_PASSPHRASE = "sayom@0099"
@@ -35,7 +35,7 @@ exchange = ccxt.kucoin({
 SYMBOL = 'BTC/USDT'
 in_position = False
 buy_amount_btc = 0
-active_trade_usdt = 0 # Koto dollar-er trade cholche tar hisab
+active_trade_usdt = 0 
 
 def calculate_rsi(prices, period=14):
     if len(prices) < period + 1: return 50
@@ -58,7 +58,6 @@ print("🚀 DIE WIN V2 - ADVANCED TRADING ENGINE STARTED...")
 
 while True:
     try:
-        # Original Trading Balance check kora
         balance_data = exchange.fetch_balance()
         usdt_balance = balance_data['free'].get('USDT', 0.0)
 
@@ -71,7 +70,6 @@ while True:
         command = app_req.get('command', 'STOP') if app_req else 'STOP'
         target_usdt = app_req.get('targetUsdt', 0) if app_req else 0
 
-        # RSI 40 er kom asle Buy korbe (Updated)
         if command == "START" and target_usdt >= 1 and current_rsi < 40 and not in_position:
             if usdt_balance >= target_usdt:
                 buy_amount_btc = target_usdt / live_price
@@ -91,7 +89,6 @@ while True:
             
             requests.patch(f"{FIREBASE_URL}/appData.json", json={"tradeCompleted": True, "command": "STOP"})
 
-        # Firebase-e notun data pathano (Balance & Active Trade)
         bot_data = {
             "price": f"{live_price:,.2f}",
             "rsi": f"{current_rsi:.1f}",
