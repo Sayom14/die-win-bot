@@ -59,9 +59,11 @@ print("🚀 DIE WIN V2 - ADVANCED TRADING ENGINE STARTED...")
 while True:
     try:
         balance_data = exchange.fetch_balance({'type': 'trade'})
-        print("\nRAW BALANCE DATA:", balance_data, "\n")
-        
         usdt_balance = balance_data['total'].get('USDT', 0.0)
+        
+        # সরাসরি ফায়ারবেসে ব্যালেন্স প্রিন্ট ও পাঠানোর জন্য
+        print(f"DEBUG BALANCE FOUND: {usdt_balance}")
+
 
         klines = exchange.fetch_ohlcv(SYMBOL, timeframe='1m', limit=15)
         closing_prices = [candle[4] for candle in klines]
