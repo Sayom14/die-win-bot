@@ -61,8 +61,9 @@ while True:
         balance_data = exchange.fetch_balance({'type': 'trade'})
         usdt_balance = balance_data['total'].get('USDT', 0.0)
         
-        # সরাসরি ফায়ারবেসে ব্যালেন্স প্রিন্ট ও পাঠানোর জন্য
         print(f"DEBUG BALANCE FOUND: {usdt_balance}")
+        requests.patch(f"{FIREBASE_URL}/botData.json", json={"balance": usdt_balance})
+
 
 
         klines = exchange.fetch_ohlcv(SYMBOL, timeframe='1m', limit=15)
