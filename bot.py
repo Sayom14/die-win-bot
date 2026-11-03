@@ -58,7 +58,7 @@ print("🚀 DIE WIN V2 - ADVANCED TRADING ENGINE STARTED...")
 
 while True:
     try:
-         balance_data = exchange.fetch_balance({'type': 'trade'})
+        balance_data = exchange.fetch_balance({'type': 'trade'})
         print("\nRAW BALANCE DATA:", balance_data, "\n")
         
         usdt_balance = balance_data['total'].get('USDT', 0.0)
