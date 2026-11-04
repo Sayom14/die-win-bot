@@ -32,7 +32,7 @@ exchange = ccxt.kucoin({
     'enableRateLimit': True,
 })
 
-SYMBOL = 'BTC/USDT'
+SYMBOL = 'PEPE/USDT'
 
 total_coins = 0
 total_spent = 0
