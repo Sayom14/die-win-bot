@@ -63,7 +63,7 @@ while True:
 
             if total_coins == 0:
                 print(f"Notun trade shuru hocche... {TRADE_USDT} dollarer kena hocche.")
-                # exchange.create_market_buy_order(SYMBOL, TRADE_USDT / current_price)
+                exchange.create_market_buy_order(SYMBOL, TRADE_USDT / current_price)
                 
                 total_spent = TRADE_USDT
                 total_coins = TRADE_USDT / current_price
@@ -75,7 +75,7 @@ while True:
                 
                 if price_change_pct >= TAKE_PROFIT_PCT:
                     print(f"🎯 Profit target hit! {price_change_pct:.2f}% lave sob sell kora hocche...")
-                    # exchange.create_market_sell_order(SYMBOL, total_coins)
+                    exchange.create_market_sell_order(SYMBOL, total_coins)
                     
                     total_coins = 0
                     total_spent = 0
@@ -87,7 +87,7 @@ while True:
                     
                 elif price_change_pct <= -PRICE_DROP_PCT:
                     print(f"📉 Dam {price_change_pct:.2f}% komeche! Average komanor jonno abar kena hocche...")
-                    # exchange.create_market_buy_order(SYMBOL, TRADE_USDT / current_price)
+                    exchange.create_market_buy_order(SYMBOL, TRADE_USDT / current_price)
                     
                     total_spent += TRADE_USDT
                     total_coins += (TRADE_USDT / current_price)
