@@ -101,8 +101,8 @@ while True:
             usdt_balance = balance_data['total'].get('USDT', 0.0)
             
             bot_data = {
-                "price": f"{current_price:.2f}",
-                "average_price": f"{average_price:.2f}",
+                "price": f"{current_price:.8f}",
+                "average_price": f"{average_price:.8f}",
                 "balance": f"{usdt_balance:.2f}",
                 "active_trade": f"{total_spent:.2f}"
             }
