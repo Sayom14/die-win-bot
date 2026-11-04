@@ -16,11 +16,11 @@ def run_server():
     app.run(host='0.0.0.0', port=port)
 
 threading.Thread(target=run_server).start()
-# -----------------------------------
+# --------------------------------
 
 FIREBASE_URL = "https://die-win-trader-default-rtdb.firebaseio.com"
 
-# নিচে আপনার KuCoin API ডাটা বসান
+# Niche apnar KuCoin API data bosan
 API_KEY = "6ae9f4c10065990001dd66a7"
 SECRET_KEY = "bc471e6c-9b88-47cd-a983-aa801d08dc03"
 API_PASSPHRASE = "SaYom@0099"
@@ -33,76 +33,78 @@ exchange = ccxt.kucoin({
 })
 
 SYMBOL = 'BTC/USDT'
-in_position = False
-buy_amount_btc = 0
-active_trade_usdt = 0 
 
-def calculate_rsi(prices, period=14):
-    if len(prices) < period + 1: return 50
-    gains = []
-    losses = []
-    for i in range(1, len(prices)):
-        change = prices[i] - prices[i-1]
-        if change > 0:
-            gains.append(change); losses.append(0)
-        else:
-            gains.append(0); losses.append(abs(change))
-            
-    avg_gain = sum(gains[-period:]) / period
-    avg_loss = sum(losses[-period:]) / period
-    if avg_loss == 0: return 100
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+# --- Notun Average (DCA) Trading Logic ---
 
-print("🚀 DIE WIN V2 - ADVANCED TRADING ENGINE STARTED...")
+TAKE_PROFIT_PCT = 1.0  # 1% lav hole sob sell korbe
+PRICE_DROP_PCT = 2.0   # Dam 2% komle average korar jonno abar kinbe
+TRADE_USDT = 1         # Protibar koto dollarer kinbe (1 dollar)
+
+total_coins = 0
+total_spent = 0
+average_price = 0
+
+print("🚀 DIE WIN V2 - FAST AVERAGE (DCA) ENGINE STARTED...")
 
 while True:
     try:
+        # Firebase theke balance update kora
         balance_data = exchange.fetch_balance({'type': 'trade'})
         usdt_balance = balance_data['total'].get('USDT', 0.0)
-        
-        print(f"DEBUG BALANCE FOUND: {usdt_balance}")
         requests.patch(f"{FIREBASE_URL}/botData.json", json={"balance": usdt_balance})
 
+        # Bortoman dam check kora
+        ticker = exchange.fetch_ticker(SYMBOL)
+        current_price = ticker['last']
+        
+        print(f"Bortoman dam: ${current_price}")
 
-
-        klines = exchange.fetch_ohlcv(SYMBOL, timeframe='1m', limit=15)
-        closing_prices = [candle[4] for candle in klines]
-        live_price = closing_prices[-1]
-        current_rsi = calculate_rsi(closing_prices)
-
-        app_req = requests.get(f"{FIREBASE_URL}/appData.json").json()
-        command = app_req.get('command', 'STOP') if app_req else 'STOP'
-        target_usdt = app_req.get('targetUsdt', 0) if app_req else 0
-
-        if command == "START" and target_usdt >= 1 and current_rsi < 40 and not in_position:
-            if usdt_balance >= target_usdt:
-                buy_amount_btc = target_usdt / live_price
-                active_trade_usdt = target_usdt
-                print(f"\n[!] RSI IS {current_rsi:.1f} (< 40)! EXECUTING BUY OF ${target_usdt}...")
-                
-                exchange.create_market_buy_order(SYMBOL, buy_amount_btc)
-                in_position = True
-            else:
-                print(f"[X] Insufficient Balance! You need ${target_usdt} but have ${usdt_balance}")
-
-        elif in_position and current_rsi > 70:
-            print(f"\n[!] RSI IS {current_rsi:.1f}! SELLING TO SECURE PROFIT...")
-            exchange.create_market_sell_order(SYMBOL, buy_amount_btc)
-            in_position = False
-            active_trade_usdt = 0
+        if total_coins == 0:
+            # 1. Jodi kono coin kena na thake, tahole prothom trade nibe
+            print(f"Notun trade shuru hocche... {TRADE_USDT} dollarer kena hocche.")
+            # exchange.create_market_buy_order(SYMBOL, TRADE_USDT / current_price)
             
-            requests.patch(f"{FIREBASE_URL}/appData.json", json={"tradeCompleted": True, "command": "STOP"})
+            total_spent = TRADE_USDT
+            total_coins = TRADE_USDT / current_price
+            average_price = current_price
+            print(f"✅ Kena somponno! Average dam: ${average_price}")
 
+        else:
+            # 2. Profit hiseb kora (bortoman dam average damer cheye koto % upore ba niche ache)
+            price_change_pct = ((current_price - average_price) / average_price) * 100
+            
+            if price_change_pct >= TAKE_PROFIT_PCT:
+                # 3. Lav hole sob sell kore dewa (Average System)
+                print(f"🎯 Profit target hit! {price_change_pct:.2f}% lave sob sell kora hocche...")
+                # exchange.create_market_sell_order(SYMBOL, total_coins)
+                
+                total_coins = 0
+                total_spent = 0
+                average_price = 0
+                print("✅ Sob sell somponno! Notun trade-er jonno prostut.")
+                
+            elif price_change_pct <= -PRICE_DROP_PCT:
+                # 4. Dam kome gele abar kena (Average komanor jonno)
+                print(f"📉 Dam {price_change_pct:.2f}% komeche! Average komanor jonno abar kena hocche...")
+                # exchange.create_market_buy_order(SYMBOL, TRADE_USDT / current_price)
+                
+                # Notun average hiseb kora
+                total_spent += TRADE_USDT
+                total_coins += (TRADE_USDT / current_price)
+                average_price = total_spent / total_coins
+                print(f"✅ Abar kena somponno! Apnar notun komano average dam: ${average_price}")
+
+        # Firebase-e data pathano
         bot_data = {
-            "price": f"{live_price:,.2f}",
-            "rsi": f"{current_rsi:.1f}",
+            "price": f"{current_price:.2f}",
+            "rsi": "N/A", # Ekhon ar RSI nai
             "balance": f"{usdt_balance:.2f}",
-            "active_trade": f"{active_trade_usdt:.2f}"
+            "active_trade": f"{total_spent:.2f}"
         }
-        requests.put(f"{FIREBASE_URL}/botData.json", json=bot_data)
+        requests.patch(f"{FIREBASE_URL}/botData.json", json=bot_data)
+
+        time.sleep(10) # Proti 10 second por por market check korbe
 
     except Exception as e:
-        print(f"System Error: {e}")
-    
-    time.sleep(3)
+        print("System Error:", e)
+        time.sleep(10)
