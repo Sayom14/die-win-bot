@@ -38,11 +38,10 @@ total_coins = 0
 total_spent = 0
 average_price = 0
 
-print("🚀 DIE WIN V2 - APP CONNECTED DCA ENGINE STARTED...")
+print("🚀 DIE WIN V2 - FULL AUTO ENGINE STARTED...")
 
 while True:
     try:
-        # 1. App theke Command o Settings ana
         app_req = requests.get(f"{FIREBASE_URL}/appData.json").json()
         if not app_req:
             app_req = {}
@@ -50,12 +49,10 @@ while True:
         command = app_req.get('command', 'STOP')
         
         if command == "START":
-            # App theke input nibe, na thakle default 1.0 ar 2.0 nibe
-            TAKE_PROFIT_PCT = float(app_req.get('take_profit', 1.0))
+            TAKE_PROFIT_PCT = float(app_req.get('take_profit', 0.5))
             PRICE_DROP_PCT = float(app_req.get('drop_percent', 2.0))
             TRADE_USDT = float(app_req.get('target_usdt', 1.0))
 
-            # Bortoman dam check kora
             ticker = exchange.fetch_ticker(SYMBOL)
             current_price = ticker['last']
             
@@ -74,16 +71,22 @@ while True:
                 price_change_pct = ((current_price - average_price) / average_price) * 100
                 
                 if price_change_pct >= TAKE_PROFIT_PCT:
-                    print(f"🎯 Profit target hit! {price_change_pct:.2f}% lave sob sell kora hocche...")
+                    # Profit koto holo seta hiseb kora
+                    profit_usdt = (total_coins * current_price) - total_spent
+                    print(f"🎯 Profit target hit! {profit_usdt:.4f}$ lav e sell kora hocche...")
                     exchange.create_market_sell_order(SYMBOL, total_coins)
+                    
+                    # Firebase theke ager mot profit tene ene notun ta jog kora
+                    bot_db = requests.get(f"{FIREBASE_URL}/botData.json").json() or {}
+                    ager_profit = float(bot_db.get('total_profit_earned', 0.0))
+                    notun_total_profit = ager_profit + profit_usdt
+                    requests.patch(f"{FIREBASE_URL}/botData.json", json={"total_profit_earned": notun_total_profit})
                     
                     total_coins = 0
                     total_spent = 0
                     average_price = 0
-                    print("✅ Sob sell somponno! Notun trade-er jonno prostut.")
-                    
-                    # Profit korar por bot auto STOP hobe jate abar app theke START kora jay
-                    requests.patch(f"{FIREBASE_URL}/appData.json", json={"command": "STOP"})
+                    print("✅ Sob sell somponno! Bot auto abar notun trade nibe...")
+                    # Ekhon ar STOP hobe na, porer line-e giye abar auto kinbe!
                     
                 elif price_change_pct <= -PRICE_DROP_PCT:
                     print(f"📉 Dam {price_change_pct:.2f}% komeche! Average komanor jonno abar kena hocche...")
@@ -94,7 +97,6 @@ while True:
                     average_price = total_spent / total_coins
                     print(f"✅ Abar kena somponno! Apnar notun komano average dam: ${average_price}")
 
-            # 2. Firebase-e Live Data pathano (App-e dekhanor jonno)
             balance_data = exchange.fetch_balance({'type': 'trade'})
             usdt_balance = balance_data['total'].get('USDT', 0.0)
             
